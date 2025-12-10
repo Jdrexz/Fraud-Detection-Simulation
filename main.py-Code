@@ -1,0 +1,86 @@
+# main.py
+"""
+Fraud Detection Simulation
+- Generates a simulated transactions dataset with a 'is_fraud' label.
+- Trains a simple logistic regression classifier and prints evaluation metrics.
+Run: python main.py
+"""
+
+import os
+import pandas as pd      # pandas used for tabular handling (features/labels)
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import classification_report, roc_auc_score, confusion_matrix
+from sklearn.preprocessing import StandardScaler
+
+# **CHANGE**: file locations or simulation settings
+DATA_DIR = "data"
+CSV_PATH = os.path.join(DATA_DIR, "simulated_transactions.csv")
+
+def generate_simulated_transactions(path, n=2000, fraud_rate=0.05):
+    """Generates a synthetic transactions dataset for experimentation."""
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    rng = np.random.default_rng(123)
+    amount = rng.exponential(scale=100, size=n)  # transaction amounts
+    time_delta = rng.integers(0, 86400, size=n)  # seconds from start of day
+    country = rng.choice(["US","CA","GB","NG","RU"], size=n, p=[0.6,0.1,0.1,0.1,0.1])
+    user_age_days = rng.integers(10, 4000, size=n)
+    # create a simple rule to set fraud probability
+    base_prob = 0.02 + (amount > 500)*0.1 + (country == "NG")*0.15 + (user_age_days < 30)*0.05
+    labels = rng.random(n) < base_prob
+    df = pd.DataFrame({
+        "transaction_id": np.arange(1, n+1),
+        "amount": amount.round(2),
+        "time_sec": time_delta,
+        "country": country,
+        "user_age_days": user_age_days,
+        "is_fraud": labels.astype(int)
+    })
+    df.to_csv(path, index=False)
+    print(f"Generated simulated transactions at {path}")
+    return df
+
+def load_or_generate(path):
+    if os.path.exists(path):
+        return pd.read_csv(path)
+    return generate_simulated_transactions(path)
+
+def preprocess(df):
+    """Preprocess: basic feature engineering & encoding."""
+    df = df.copy()
+    # Example features
+    df["hour"] = (df["time_sec"] // 3600) % 24
+    # encode 'country' as simple dummy variables (one-hot)
+    dummies = pd.get_dummies(df["country"], prefix="country")
+    features = pd.concat([df[["amount","user_age_days","hour"]], dummies], axis=1)
+    labels = df["is_fraud"]
+    return features, labels
+
+def train_evaluate(X, y):
+    """Train logistic regression and evaluate."""
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, stratify=y, random_state=42)
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_test_scaled = scaler.transform(X_test)
+    model = LogisticRegression(max_iter=1000)
+    model.fit(X_train_scaled, y_train)
+    y_pred = model.predict(X_test_scaled)
+    y_proba = model.predict_proba(X_test_scaled)[:,1]
+    print("=== Classification Report ===")
+    print(classification_report(y_test, y_pred, digits=4))
+    print("ROC AUC:", round(roc_auc_score(y_test, y_proba), 4))
+    print("Confusion Matrix:\n", confusion_matrix(y_test, y_pred))
+    # **CHANGE**: persist the model, thresholds, or export features as needed
+    return model, scaler
+
+def main():
+    df = load_or_generate(CSV_PATH)
+    X, y = preprocess(df)
+    model, scaler = train_evaluate(X, y)
+    # Example: print top coefficient features
+    coef = pd.Series(model.coef_[0], index=X.columns).sort_values(ascending=False)
+    print("\nTop features by coefficient:\n", coef.head(10))
+
+if __name__ == "__main__":
+    main()
