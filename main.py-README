@@ -1,0 +1,11 @@
+# Fraud Detection Simulation
+This project simulates transaction data and trains a simple logistic regression classifier for fraud detection. It's intended as a starting point for feature engineering and model experimentation.
+
+**How to run**
+1. `pip install -r requirements.txt`
+2. `python main.py`
+
+**Customize**
+- Replace the synthetic data generator with your real transactions CSV.
+- Add richer features (behavioral features, time-series patterns, device fingerprints).
+- Replace LogisticRegression with tree-based models (RandomForest, XGBoost) for improved performance.
