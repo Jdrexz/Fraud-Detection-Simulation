@@ -1,0 +1,11 @@
+fraud-detection-simulator/
+│── data/
+│   └── synthetic_applicants.csv
+│── src/
+│   ├── generate_data.py
+│   ├── fraud_rules.py
+│   └── run_detection.py
+│── notebooks/
+│   └── fraud_analysis.ipynb
+│── README.md
+│── requirements.txt
